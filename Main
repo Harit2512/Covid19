@@ -1,0 +1,190 @@
+# %% [code]
+# This Python 3 environment comes with many helpful analytics libraries installed
+# It is defined by the kaggle/python docker image: https://github.com/kaggle/docker-python
+# For example, here's several helpful packages to load in 
+ 
+# Input data files are available in the "../input/" directory.
+# For example, running this (by clicking run or pressing Shift+Enter) will list all files under the input directory
+import pandas as pd
+import numpy as np
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+# Any results you write to the current directory are saved as output.
+
+# %% [code]
+import matplotlib as ml
+import seaborn as sns
+
+from sklearn import linear_model
+from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import Perceptron
+from sklearn.linear_model import SGDClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC, LinearSVC
+from sklearn.naive_bayes import GaussianNB
+
+# Model Selection
+from sklearn import model_selection
+from sklearn.model_selection import cross_val_score
+from sklearn.model_selection import GridSearchCV
+from sklearn.preprocessing import OneHotEncoder, LabelEncoder
+from sklearn import feature_selection
+from sklearn import metrics
+from sklearn.preprocessing import StandardScaler,minmax_scale
+import missingno as msno
+
+# %% [code]
+train=pd.read_excel('/kaggle/input/flipr-hiring-challenge/Train_dataset.xlsx')
+test=pd.read_excel('/kaggle/input/flipr-hiring-challenge/Test_dataset.xlsx')
+
+# %% [code]
+msno.bar(train)
+
+# %% [code]
+train.info()
+
+# %% [code]
+train.describe().T
+
+# %% [code]
+train['res']=(train.Infect_Prob>80)
+jtrain=train
+jtrain=jtrain.drop(jtrain[jtrain['Region']!='Bhubaneshwar'].index)
+jtrain=jtrain.drop(jtrain[jtrain['res']==False].index)
+
+#sns.distplot(a=train['Age'], kde=False)
+#sns.distplot(a=jtrain['Platelets'], kde=False)
+print(train.groupby('Married').Infect_Prob.mean())
+#jtrain.index=np.arange(len(jtrain))
+#ml.pyplot.plot(train.Infect_Prob)
+#jtrain
+
+# %% [code]
+sns.lineplot(x='FT/month', y ='Infect_Prob',data = train);
+
+# %% [code]
+mtrain=train
+mtrain.groupby('cardiological pressure').mean()
+
+# %% [code]
+ktrain = train.drop(['people_ID'], axis = 1)
+ktrain = ktrain.drop(['Coma score'], axis = 1)
+#ktrain = ktrain.drop(['Diuresis'], axis = 1)
+ktrain = ktrain.drop(['Name'], axis = 1)
+#ktrain = ktrain.drop(['Platelets'], axis = 1)
+ktrain = ktrain.drop(['HBB'], axis = 1)
+ktrain = ktrain.drop(['d-dimer'], axis = 1)
+ktrain = ktrain.drop(['Heart rate'], axis = 1)
+ktrain = ktrain.drop(['HDL cholesterol'], axis = 1)
+ktrain = ktrain.drop(['Charlson Index'], axis = 1)
+ktrain = ktrain.drop(['Insurance'], axis = 1)
+#ktrain = ktrain.drop(['salary'], axis = 1)
+#ktrain = ktrain.drop(['Gender'], axis = 1)
+ktrain = ktrain.drop(['Designation'], axis = 1)
+ktrain = ktrain.drop(['comorbidity'], axis = 1)
+ktrain = ktrain.drop(['cardiological pressure'], axis = 1)
+
+ktrain.describe([0.10,0.25,0.50,0.75,0.90,0.99]).T
+
+# %% [code]
+ktrain["Children"].fillna(3, inplace = True)
+ktrain["FT/month"].fillna(3, inplace = True)
+ktrain["Platelets"].fillna(0, inplace = True)
+ktrain["Mode_transport"].fillna('Public', inplace = True)
+ktrain["Occupation"].fillna('NA', inplace = True)
+ktrain['Children']=ktrain['Children'].astype(int)
+ktrain['Diuresis']=ktrain['Children'].astype(int)
+ktrain['FT/month']=ktrain['FT/month'].astype(int)
+ktrain=ktrain.drop(ktrain[ktrain['Occupation']=='NA'].index)
+
+ktrain.shape
+
+# %% [code]
+sns.lineplot(x='Occupation', y ='Infect_Prob',data = ktrain);
+
+# %% [code]
+
+
+# %% [code]
+jk=ktrain.drop(ktrain[ktrain['Occupation']!='NA'].index)
+ktrain.groupby('Occupation').count()
+
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+
+X = ktrain.drop(['Infect_Prob'], axis = 1)
+X = X.drop(['res'], axis = 1)
+Y = ktrain["Infect_Prob"]
+#Y=Y*100000000
+#Y=Y.astype(int)
+#Y
+
+# %% [code]
+from sklearn import preprocessing 
+label_encoder = preprocessing.LabelEncoder()
+X['Region']= label_encoder.fit_transform(X['Region'])
+X['Mode_transport']= label_encoder.fit_transform(X['Mode_transport'])
+X['Gender']= label_encoder.fit_transform(X['Gender'])
+X['Pulmonary score']= label_encoder.fit_transform(X['Pulmonary score'])
+X['Married']= label_encoder.fit_transform(X['Married'])
+X['Occupation']= label_encoder.fit_transform(X['Occupation'])
+
+# %% [code]
+x_train, x_val, y_train, y_val = train_test_split(X, Y, test_size = 0.20, random_state = 50)
+
+# %% [code]
+X.shape
+X.columns
+
+# %% [code]
+from sklearn.tree import DecisionTreeRegressor
+
+# Define model. Specify a number for random_state to ensure same results each run
+model = DecisionTreeRegressor(random_state=1)
+
+# Fit model
+model.fit(x_train, y_train)
+
+# %% [code]
+j=model.predict(x_val)
+
+# %% [code]
+from math import sqrt
+sqrt(sum((j-y_val)*(j-y_val)))/len(y_val)
+
+# %% [code]
+t = test.drop(['people_ID'], axis = 1)
+t = t.drop(['Coma score'], axis = 1)
+t = t.drop(['Diuresis'], axis = 1)
+t = t.drop(['Name'], axis = 1)
+t = t.drop(['Platelets'], axis = 1)
+t = t.drop(['HBB'], axis = 1)
+t = t.drop(['d-dimer'], axis = 1)
+t = t.drop(['Heart rate'], axis = 1)
+t = t.drop(['HDL cholesterol'], axis = 1)
+t = t.drop(['Charlson Index'], axis = 1)
+t = t.drop(['Insurance'], axis = 1)
+#ktrain = ktrain.drop(['salary'], axis = 1)
+#ktrain = ktrain.drop(['Gender'], axis = 1)
+t = t.drop(['Designation'], axis = 1)
+t = t.drop(['comorbidity'], axis = 1)
+t = t.drop(['cardiological pressure'], axis = 1)
+
+# %% [code]
+t['Region']= label_encoder.fit_transform(t['Region'])
+t['Mode_transport']= label_encoder.fit_transform(t['Mode_transport'])
+t['Gender']= label_encoder.fit_transform(t['Gender'])
+t['Pulmonary score']= label_encoder.fit_transform(t['Pulmonary score'])
+t['Married']= label_encoder.fit_transform(t['Married'])
+t['Occupation']= label_encoder.fit_transform(t['Occupation'])
+
+# %% [code]
+model.predict(x_val)
+
+# %% [code]
+ml.pyplot.plot(model.predict(x_val))
